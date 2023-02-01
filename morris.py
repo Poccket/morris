@@ -384,13 +384,13 @@ def cpu_morris(player, difficulty):
         else:
             while True:
                 rand1 = choice(range(len(moves)))
-                if rand1 == 2:
+                if moves[rand1] == 2:
                     break
             while True:
                 rand2 = choice(range(len(moves)))
-                if rand2 == 0:
+                if moves[rand2] == 0:
                     break
-            return (rand1, rand2)
+            return (rand2, rand1)
     if remaining_moves >= 0:
         play = cpu_move(2, difficulty, failChance)
         return (play, -1)
@@ -576,15 +576,15 @@ while active:
                 elif event.key in [K_1, K_2, K_3, K_4, K_0]:
                     cpu_active = True
                     if event.key == K_1:
-                    	diff = 1
+                        diff = 1
                     elif event.key == K_2:
-                    	diff = 2
+                        diff = 2
                     elif event.key == K_3:
-                    	diff = 3
+                        diff = 3
                     elif event.key == K_4:
-                    	diff = 4
+                        diff = 4
                     elif event.key == K_0:
-                    	diff = 0
+                        diff = 0
                     event.key = K_SPACE
                 if event.key == K_SPACE:
                     if win_state:
