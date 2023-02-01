@@ -6,16 +6,9 @@ from math import prod
 from pygame import gfxdraw
 from random import randint, choice
 from pygame.locals import (
-    K_0,
-    K_1,
-    K_2,
-    K_3,
-    K_4,
-    K_SPACE,
-    K_ESCAPE,
-    K_RETURN,
-    KEYDOWN,
-    MOUSEBUTTONDOWN
+    K_0, K_1, K_2, K_3, K_4,
+    K_SPACE, K_ESCAPE, K_RETURN,
+    KEYDOWN, MOUSEBUTTONDOWN
 )
 
 if getattr(sys, 'frozen', False):
@@ -29,16 +22,15 @@ def load_file(file_name):
 # Initialization
 pygame.init()
 pygame.display.set_caption('Three Men\'s Morris')
-#programIcon = pygame.image.load('moris.ico')
-#pygame.display.set_icon(programIcon)
-_sm = 1
-dataFolder = "databig" if _sm == 2 else "data"
+_sm = 1                                             # For changing resolution. W.I.P.
+dataFolder = "databig" if _sm == 2 else "data"      # databig folder not included in github repo
+programIcon = pygame.image.load(f'{dataFolder}/moris.png')
+pygame.display.set_icon(programIcon)
 screen = pygame.display.set_mode([640*_sm, 480*_sm])
 clock = pygame.time.Clock()
 fonts = {
     "Arial": pygame.font.SysFont("Arial", 18*_sm, bold=True),
     "Andy": pygame.font.Font(load_file(f"./{dataFolder}/andy.ttf"), 48*_sm, bold=True),
-    "Pixel": pygame.font.Font(load_file(f"./{dataFolder}/Pixel.ttf"), 24*_sm, bold=True),
     "AndySmall": pygame.font.Font(load_file(f"./{dataFolder}/andy.ttf"), 18*_sm, bold=True)
 }
 
@@ -103,13 +95,53 @@ sprites = {
                             load_file(f"{dataFolder}/chatbubble.png")).convert_alpha(),
 }
 
-curr_sprite = "hand_open"
-
 debug_info = {
     "mod": None, "fps": None, "opponent": None, "player": None,
     "last_move": None, "last_strat": None
 }
 debug = False
+
+
+class Hand():
+    def __init__(self):
+        self.sprite = "hand_open"
+        self.frame = 0
+        self.frametime = 0
+        self.pos = [0, 0]
+    
+    def animate(self, dt):
+        self.frametime += dt
+        to_draw = sprites[self.sprite]
+        if self.frametime > 90 or self.frame > len(to_draw)-1:
+            self.frame = self.frame+1 if self.frame < len(to_draw)-1 else 0
+            self.frametime = 0
+    
+    def draw(self, dt):
+        to_draw = sprites[self.sprite]
+        if isinstance(to_draw, list):
+            self.animate(dt)
+            screen.blit(to_draw[self.frame], self.pos)
+        else:
+            screen.blit(to_draw, self.pos)
+
+    def move_hand(self, new_pos, dt, mod=1):
+        in_pos = True
+        speed = 50 + (200/min(mod, 1))
+        if self.pos[0] > new_pos[0]+5:
+            self.pos[0] -= (dt * ((self.pos[0] - new_pos[0]) / speed))+5
+            in_pos = False
+        if self.pos[0] < new_pos[0]-5:
+            self.pos[0] += (dt * ((new_pos[0] - self.pos[0]) / speed))+5
+            in_pos = False
+        if self.pos[1] > new_pos[1]+5:
+            self.pos[1] -= (dt * ((self.pos[1] - new_pos[1]) / speed))+5
+            in_pos = False
+        if self.pos[1] < new_pos[1]-5:
+            self.pos[1] += (dt * ((new_pos[1] - self.pos[1]) / speed))+5
+            in_pos = False
+        return in_pos
+
+
 
 
 def debug_show():
@@ -173,26 +205,6 @@ hand_pos = {
     ],
     "idle": (530*_sm, 240*_sm)
 }
-
-curr_pos = [500*_sm, -150]
-
-
-def move_hand(new_pos):
-    in_pos = True
-    speed = 50 + (200/(diff+1))
-    if curr_pos[0] > new_pos[0]+5:
-        curr_pos[0] -= (dt * ((curr_pos[0] - new_pos[0]) / speed))+5
-        in_pos = False
-    if curr_pos[0] < new_pos[0]-5:
-        curr_pos[0] += (dt * ((new_pos[0] - curr_pos[0]) / speed))+5
-        in_pos = False
-    if curr_pos[1] > new_pos[1]+5:
-        curr_pos[1] -= (dt * ((curr_pos[1] - new_pos[1]) / speed))+5
-        in_pos = False
-    if curr_pos[1] < new_pos[1]-5:
-        curr_pos[1] += (dt * ((new_pos[1] - curr_pos[1]) / speed))+5
-        in_pos = False
-    return in_pos
 
 
 def draw_text(font, text, color, pos, shadow=True):
@@ -518,6 +530,7 @@ current_msg = "I'm bored..."
 newmsg = False
 msgtime = 4000
 msgpopup = 800
+cpuHand = Hand()
 while active:
     if not paused:
         dt = clock.tick(60)
@@ -569,7 +582,7 @@ while active:
                     else:
                         diff = 1
                     cpu_active = not cpu_active
-                    curr_pos[1] = 1000
+                    cpuHand.pos[1] = 1000*_sm
                     event.key = K_SPACE
                 elif event.key == K_ESCAPE:
                     debug = not debug
@@ -588,7 +601,7 @@ while active:
                     event.key = K_SPACE
                 if event.key == K_SPACE:
                     if win_state:
-                        curr_pos[1] = 1000
+                        cpuHand.pos[1] = 1000
                     moves = [0 for y in range(9)]
                     mod = -100
                     remaining_moves = 3
@@ -607,13 +620,13 @@ while active:
             if not turn and not win_state:
                 if hand_state == 0:
                     think_time += dt
-                    curr_sprite = "hand_open"
+                    cpuHand.sprite = "hand_open"
                     if think_time > randint(round(500/(diff+1)), round(1000/(diff+1))):
                         hand_state = choice([1, 1] + [10 for i in range(diff+1)])
                         think_pick = randint(0, 8)
                         think_time = 0
                 elif hand_state == 1:
-                    if move_hand(hand_pos["board"][think_pick]):
+                    if cpuHand.move_hand(hand_pos["board"][think_pick], dt):
                         think_time += dt
                         if think_time > randint(round(500/(diff+1)), round(1000/(diff+1))):
                             hand_state = choice([1] + [10 for i in range(diff+1)])
@@ -622,13 +635,13 @@ while active:
                             think_time = 0
                 elif hand_state == 10:
                     if cpu_moves > 0:
-                        if move_hand(hand_pos["hand"][cpu_moves-1]):
+                        if cpuHand.move_hand(hand_pos["hand"][cpu_moves-1], dt):
                             think_time += dt
                             if think_time > randint(round(500/(diff+1)), round(1000/(diff+1))):
                                 hand_state = choice([21, 21] + [30 for i in range(diff+1)])
                                 last_move, pickup = cpu_morris(2, diff)
                                 pygame.mixer.Sound.play(sounds["grab"])
-                                curr_sprite = "hand_grab"
+                                cpuHand.sprite = "hand_grab"
                                 g = -1
                                 while True:
                                     if inhand[1][g]:
@@ -640,13 +653,13 @@ while active:
                         hand_state = 20
                         last_move, pickup = cpu_morris(2, diff)
                 elif hand_state == 20:
-                    if move_hand(hand_pos["board"][pickup]):
+                    if cpuHand.move_hand(hand_pos["board"][pickup], dt):
                         moves[pickup] = 0
                         hand_state = choice([21] + [30 for i in range(diff+1)])
                         pygame.mixer.Sound.play(sounds["grab"])
-                        curr_sprite = "hand_grab"
+                        cpuHand.sprite = "hand_grab"
                 elif hand_state == 21:
-                    if move_hand(hand_pos["board"][think_pick]):
+                    if cpuHand.move_hand(hand_pos["board"][think_pick], dt):
                         think_time += dt
                         if think_time > randint(round(500/(diff+1)), round(1000/(diff+1))):
                             hand_state = choice([21] + [30 for i in range(diff+1)])
@@ -656,11 +669,11 @@ while active:
                                     think_pick = randint(0, 8)
                             think_time = 0
                 elif hand_state == 30:
-                    if move_hand(hand_pos["board"][last_move]):
+                    if cpuHand.move_hand(hand_pos["board"][last_move], dt):
                         hand_state = 40
                         moves[last_move] = 2
                         pygame.mixer.Sound.play(sounds["place"])
-                        curr_sprite = "hand_open"
+                        cpuHand.sprite = "hand_open"
                 elif hand_state == 40:
                     turn = True
                     if remaining_moves < 0:
@@ -680,13 +693,13 @@ while active:
                     wait_time = 0
             elif not win_state:
                 hand_state = 0
-                if move_hand(hand_pos["idle"]):
+                if cpuHand.move_hand(hand_pos["idle"], dt):
                     if wait_time < 10000:
-                        curr_sprite = "hand_open"
+                        cpuHand.sprite = "hand_open"
                     elif wait_time < 20000:
-                        curr_sprite = "hand_tappy"
+                        cpuHand.sprite = "hand_tappy"
                     else:
-                        curr_sprite = "hand_watch"
+                        cpuHand.sprite = "hand_watch"
                     wait_time += dt
     else:
         dt = clock.tick(30)
@@ -742,29 +755,20 @@ while active:
         elif holding and not turn:
             draw_o_center(pygame.mouse.get_pos(), "red")
     if cpu_active and hand_state in [30, 21]:
-        draw_o_center((int(curr_pos[0]), int(curr_pos[1])), "red")
+        draw_o_center((int(cpuHand.pos[0]), int(cpuHand.pos[1])), "red")
     if win_state and not paused:
         mod += dt / 5
         if cpu_active:
-            curr_sprite = "hand_open"
+            cpuHand.sprite = "hand_open"
     if debug:
         debug_info["last_move"] = last_move
         debug_show()
     if cpu_active:
         if win_state:
-            mod_pos = (curr_pos[0] + shift, curr_pos[1] + gmod)
+            mod_pos = (cpuHand.pos[0] + shift, cpuHand.pos[1] + gmod)
         else:
-            mod_pos = curr_pos
-        draw_me = sprites[curr_sprite]
-        if type(draw_me) == list:  # animated sprites
-            if not paused:
-                if frameup > 90 or frame > len(draw_me)-1:
-                    frame = frame+1 if frame < len(draw_me)-1 else 0
-                    frameup = 0
-                frameup += dt
-            screen.blit(draw_me[frame], mod_pos)
-        else:
-            screen.blit(draw_me, mod_pos)
+            mod_pos = cpuHand.pos
+        cpuHand.draw(dt)
 
     if paused or win_state:
         fade += dt/2 if fade < 196 else 0
