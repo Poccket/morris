@@ -329,7 +329,7 @@ def highlight_square(turn):
     return
 
 
-def moriss_move(player, holding):
+def morris_move(player, holding):
     mouse_loc = pygame.mouse.get_pos()
     for i, square in enumerate(squares + hands):
         if square.contains(pygame.Rect(mouse_loc, (1, 1))):
@@ -533,7 +533,7 @@ while active:
                 active = False
             elif event.type == MOUSEBUTTONDOWN:
                 if turn and not win_state:
-                    if (last_move := moriss_move(1, holding)) > -1:
+                    if (last_move := morris_move(1, holding)) > -1:
                         turn = False
                         remaining_moves -= 1
                         think_time = 0
@@ -548,7 +548,7 @@ while active:
                             pygame.mixer.Sound.play(sounds["grab"])
                         holding = not holding
                 elif not cpu_active and not win_state:
-                    if (last_move := moriss_move(2, holding)) > -1:
+                    if (last_move := morris_move(2, holding)) > -1:
                         turn = True
                         remaining_moves -= 1
                         think_time = 0
